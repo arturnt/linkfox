@@ -1,0 +1,21 @@
+.orange {
+	color: #fef4e9 !important;
+	border: solid 1px #da7c0c !important;
+	background: #f78d1d !important;
+	text-shadow: 0 1px 1px rgba(0,0,0,.3) !important;
+	background: -webkit-gradient(linear, left top, left bottom, from(#faa51a), to(#f47a20)) !important;
+	background: -moz-linear-gradient(top,  #faa51a,  #f47a20) !important;
+	filter:  progid:DXImageTransform.Microsoft.gradient(startColorstr='#faa51a', endColorstr='#f47a20') !important;
+}
+.orange:hover {
+	background: #f47c20 !important;
+	background: -webkit-gradient(linear, left top, left bottom, from(#f88e11), to(#f06015)) !important;
+	background: -moz-linear-gradient(top,  #f88e11,  #f06015) !important;
+	filter:  progid:DXImageTransform.Microsoft.gradient(startColorstr='#f88e11', endColorstr='#f06015') !important;
+}
+.profile-overview .profile-actions .orange:active {
+	color: #fcd3a5;
+	background: -webkit-gradient(linear, left top, left bottom, from(#f47a20), to(#faa51a));
+	background: -moz-linear-gradient(top,  #f47a20,  #faa51a);
+	filter:  progid:DXImageTransform.Microsoft.gradient(startColorstr='#f47a20', endColorstr='#faa51a');
+}

@@ -1,0 +1,22 @@
+
+<div id="email-result" class="profile-card-extras">
+  <div id="contact-info-section" class="more-info" style="display: block; min-height:89px;">
+     <% if (loading) { %> <span  class="loading"></span> <% } %> 
+     <table summary="Online Contact Info">
+        <tbody>
+           <tr>
+              <th>Email Matches</th>
+              <td>
+                 <div id="email">
+                    <div id="email-view">
+                       <ul><% _.forEach(emails, function(match) { %><li><a target='_blank' href='mailto:<%- match.email %>'>"
+						<%- match.email %> (<%- match.score*100 %>%)</a></li><% }); %></ul>
+					<% if(_.isEmpty(emails)) { %> <strong>No results found</strong> <% } %>"
+                    </div>
+                 </div>
+              </td>
+           </tr>
+        </tbody>
+     </table>
+  </div>
+</div>

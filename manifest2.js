@@ -1,0 +1,22 @@
+{
+    "name": "LinkBox",
+    "description": "Tries to guess the email for a given LinkedIn profile",
+    "version": "1.2.6",
+    "content_scripts": [
+        {
+            "matches": [
+                "http://www.linkedin.com/profile/*"
+            ],
+            "js": [
+                "jquery-2.1.1.min.js",
+                "lodash.min.js",
+                "content.js"
+            ]
+        }
+    ],
+    "permissions": [
+        "tabs",
+        "https://rapportive.com/",
+        "https://rapportive.com/*"
+    ]
+}
