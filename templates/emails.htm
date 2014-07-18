@@ -9,9 +9,16 @@
               <td>
                  <div id="email">
                     <div id="email-view">
-                       <ul><% _.forEach(emails, function(match) { %><li><a target='_blank' href='mailto:<%- match.email %>'>"
-						<%- match.email %> (<%- match.score*100 %>%)</a></li><% }); %></ul>
-					<% if(_.isEmpty(emails)) { %> <strong>No results found</strong> <% } %>"
+                       <ul>
+                       		<% _.forEach(emails, function(match) { %>
+                       			<li>
+                       				<a target='_blank' href='mailto:<%- match.email %>'>
+										<%- match.email %> (<%- match.score*100 %>%)
+									</a>
+								</li>
+							<% }); %>
+						</ul>
+						<% if(_.isEmpty(emails)) { %> <strong>No results found</strong> <% } %>
                     </div>
                  </div>
               </td>

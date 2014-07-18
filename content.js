@@ -28,8 +28,8 @@ var Utils = {
 		return url;
 	},
 
-	extractEmail: function(text) { 
-		return text.match(/([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+)/gi); 
+	extractEmail: function(text) {
+		return text.match(/([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+)/gi);
 	},
 
 	getParameterByName: function(url, name) {
@@ -88,23 +88,23 @@ var EmailStrategies = {
 		}
 
 		names.push(person.firstName + "." + person.lastName);
-		
+
 		names.push(person.firstName.charAt(0) + person.lastName);
 
 		names.push(person.lastName + "." + person.firstName);
 
-		if((person.firstName + person.lastName.charAt(0)).length > 5) {
+		if ((person.firstName + person.lastName.charAt(0)).length > 5) {
 			names.push(person.firstName + person.lastName.charAt(0));
 		}
 
-		if(person.middleName) {
+		if (person.middleName) {
 			names.push(person.firstName.charAt(0) + person.middleName.charAt(0) + person.lastName);
 		}
 
-		var emails =  EmailStrategies.getEmailCombos(names, domains);
+		var emails = EmailStrategies.getEmailCombos(names, domains);
 
-		if(person.personalWebsite) {
-			emails.unshift(person.firstName.toLowerCase() + "@" + 
+		if (person.personalWebsite) {
+			emails.unshift(person.firstName.toLowerCase() + "@" +
 				Utils.getDomain(person.personalWebsite));
 		}
 
@@ -165,9 +165,10 @@ var LinkedIn = {
 	},
 
 	getPersonInfo: function() {
-		
+
 		var defer = $.Deferred();
-		var currentJob = LinkedIn.getCurrentJob() || {};
+		var jobs = LinkedIn.getJobs();
+		var currentJob = jobs && jobs[0];
 
 		var
 			fullName = $(LinkedIn.paths.name).text(),
@@ -177,12 +178,12 @@ var LinkedIn = {
 
 		if (!isFullName) {
 			console.debug("this is a third degree connection, going to google to find the full name");
-			Google.search(fullName, headline, currentJob.company, "site:linkedin.com").then(function(result) {
+			Google.search(fullName, '"' + currentJob.company + '"', "site:linkedin.com").then(function(result) {
 				var result = _.find(result, function(r) {
-					return /linkedin\.com/.test(r.href);
+					return r.title.indexOf(fullName.slice(0, -1)) !== -1;
 				});
-				if (result && !/profiles/i.test(result.title)) {
-					fullName = result.title.replace(" | LinkedIn", "");
+				if (result) {
+					fullName = result.title.replace(/\s-\s.*? \| LinkedIn/g,"").replace(" | LinkedIn", "").replace(" profiles", "");
 					profileLink = result.href;
 					isFullName = true;
 					console.debug('searched google and found ', fullName, profileLink);
@@ -197,6 +198,7 @@ var LinkedIn = {
 			var name = cleanName(fullName).split(" ");
 			var usernamePattern = /.*?\.linkedin.com\/in\//;
 			var firstJob = _.min(LinkedIn.getJobs(), 'startDate');
+			var urlParts = usernamePattern.test(profileLink) ? null : profileLink.split("/");
 
 			defer.resolve({
 				firstName: _.first(name),
@@ -208,20 +210,21 @@ var LinkedIn = {
 				isFullName: isFullName,
 				emails: extractEmails(),
 				profileLink: profileLink,
+				profileId: urlParts ? [urlParts.pop(), urlParts.pop(), urlParts.pop()].reverse().join("/") : null,
 				personalWebsite: getWebsite($(LinkedIn.paths.personalWebsite).attr("href")),
 				location: $(LinkedIn.paths.location).first().text(),
 				twitterHandle: $(LinkedIn.paths.twitter).first().text() || null,
 				username: usernamePattern.test(profileLink) ? profileLink.replace(usernamePattern, "") : null,
-				age: firstJob ? (new Date).getFullYear() - firstJob.startDate.getFullYear() + 21 : null
+				age: firstJob && firstJob.startDate ? (new Date).getFullYear() - firstJob.startDate.getFullYear() + 21 : null
 			});
 		}
 
 		function cleanName(name) {
 			return name.replace(/, .*/, "") // anything with commas, phd, MD, etc. 
-					   .replace(/MD/, "")
-					   .replace(/\(.*?\)/, "") // remove all brackety stuff
-					   .replace(/[^a-zA-Z-\s]/g, '')
-					   .trim(); // now strip anything that's not a letter
+				.replace(/MD/, "")
+				.replace(/\(.*?\)/, "") // remove all brackety stuff
+				.replace(/[^a-zA-Z-\s]/g, '')
+				.trim(); // now strip anything that's not a letter
 		}
 
 		function getWebsite(href) {
@@ -230,9 +233,14 @@ var LinkedIn = {
 		}
 
 		function extractEmails() {
-			return _(Utils.extractEmail($(document.body).html()))
-					.uniq()
-					.map(function(e) { return {email: e, score:1}; }).value();
+			return _(Utils.extractEmail($(".premium-profile, #profile").html()))
+				.uniq()
+				.map(function(e) {
+					return {
+						email: e,
+						score: 1
+					};
+				}).value();
 		}
 
 
@@ -249,8 +257,8 @@ var LinkedIn = {
 			var end = $(times[1]).attr("datetime")
 
 			jobs.push({
-				title: $job.find("h4").text(),
-				company: $job.find("h5").text(),
+				title: $job.find("header h4").text(),
+				company: $job.find("header h5").text(),
 				href: $job.find("[data-li-url]").data("li-url"),
 				desc: $job.find(".description").text(),
 				startDate: new Date(start),
@@ -284,7 +292,7 @@ var LinkedIn = {
 	},
 
 	getCurrentJob: function() {
- 		return _.find(LinkedIn.getJobs(), function(job) {
+		return _.find(LinkedIn.getJobs(), function(job) {
 			return job.href && !job.endDate;
 		});
 	},
@@ -339,7 +347,7 @@ var LinkedIn = {
 var FullContact = (function() {
 
 	function get(email, person) {
-		if(!email) {
+		if (!email) {
 			console.warn("email is not defined, exiting.");
 			return;
 		}
@@ -347,12 +355,12 @@ var FullContact = (function() {
 		return fetch(email, person);
 	}
 
-	function fetch(email, person, defer){
+	function fetch(email, person, defer) {
 		var defer = defer || $.Deferred();
-		
+
 		$.getJSON("https://api.fullcontact.com/v2/person.json?apiKey=&email=" + email)
 			.always(function(profile) {
-				if(profile && profile.status == 202) {
+				if (profile && profile.status == 202) {
 					setTimeout(_.bind(fetch, this, email, person, defer), 500);
 					return;
 				}
@@ -362,15 +370,18 @@ var FullContact = (function() {
 						score: getScore(person, profile, email)
 					});
 				}
-		});
+			});
 
 		return defer;
 	}
 
 	function getScore(person, match, email) {
-		var twitterMatch = _.any(match.socialProfiles, {type:"twitter", username: person.username});
+		var twitterMatch = _.any(match.socialProfiles, {
+			type: "twitter",
+			username: person.username
+		});
 		var linkedInMatch = _.any(match.socialProfiles, function(profile) {
-			return profile.type === "linkedin" && 
+			return profile.type === "linkedin" &&
 				(profile.username == person.username || profile.url.indexOf(person.profileLink) !== -1);
 		});
 
@@ -387,7 +398,7 @@ var FullContact = (function() {
 			score += 0.5;
 		}
 
-		if(email.indexOf(person.username+"@") === 0 && email.indexOf()) {
+		if (email.indexOf(person.username + "@") === 0 && email.indexOf()) {
 			score += 0.75
 		}
 
@@ -424,11 +435,24 @@ var Rapportive = (function() {
 	}
 
 	function fetchAuthToken() {
-		return $.getJSON("https://rapportive.com/login_status").done(function(status) {
-			console.debug("setting status for rapportive: ", status);
-			_status = status;
-			return status;
-		});
+
+		var defer = $.Deferred();
+		var item = localStorage.getItem("rapportive.status");
+
+		if(item) {
+			_status = JSON.parse(item);
+			defer.resolve(_status);
+		} else {
+			$.getJSON("https://rapportive.com/login_status").done(function(status) {
+				console.debug("setting status for rapportive: ", status);
+				_status = status;
+				defer.resolve(status);
+				if(status.authenticated_as) 
+					localStorage.setItem("rapportive.status", JSON.stringify(status));
+			});
+		}
+
+		return defer;
 	}
 
 	function fetchWithSession(email, person, defer) {
@@ -464,11 +488,12 @@ var Rapportive = (function() {
 	function getScore(person, match) {
 		var twitterMatch = _.any(match.memberships, {
 			site_name: "Twitter",
-			username: person.twitterHandle
+			username: person.twitterHandle || ""
 		});
-		var linkedInMatch = _.any(match.memberships, {
-			site_name: "LinkedIn",
-			username: person.username
+		var linkedInMatch = _.any(match.memberships, function(match) {
+			return match.site_name === "LinkedIn" && 
+				(person.username !== null && person.username === match.username ||
+				 person.profileId === match.profile_id)
 		});
 
 		if (twitterMatch || linkedInMatch) { // best match
@@ -478,7 +503,7 @@ var Rapportive = (function() {
 		var score = 0.0;
 
 		if (match.last_name === person.lastName &&
-			 person.firstName.indexOf(match.first_name) !== -1) {
+			person.firstName.indexOf(match.first_name) !== -1) {
 			score += 0.5;
 		}
 
@@ -491,10 +516,10 @@ var Rapportive = (function() {
 
 	function logout() {
 		chrome.cookies.get({
-        	'url':'https://rapportive.com/',
-        	'name':"rapportive_authk"
-    	}, function(cookies) {
-			for( var i in cookies ) {
+			'url': 'https://rapportive.com/',
+			'name': "rapportive_authk"
+		}, function(cookies) {
+			for (var i in cookies) {
 				console.log("cookie", i, cookies[i]);
 			}
 		});
@@ -507,114 +532,85 @@ var Rapportive = (function() {
 	}
 })();
 
-var template = "";
-template += "<div id=\"email-result\" class=\"profile-card-extras\">";
-template += "   <div id=\"contact-info-section\" class=\"more-info defer-load\" style=\"display: block; min-height:89px;\">";
-template += "      <% if (loading) { %> <span  class=\"loading\"><\/span> <% } %> ";
-template += "      <table summary=\"Online Contact Info\">";
-template += "         <tbody>";
-template += "            <tr>";
-template += "               <th>Email Matches<\/th>";
-template += "               <td>";
-template += "                  <div id=\"email\">";
-template += "                     <div id=\"email-view\">";
-template += "                        <ul><% _.forEach(emails, function(match) { %><li><a target='_blank' href='mailto:<%- match.email %>'>"
-template += "							<%- match.email %> (<%- match.score*100 %>%)</a></li><% }); %><\/ul>";
-template += "						<% if(_.isEmpty(emails)) { %> <strong>No results found</strong> <% } %>"
-template += "                     <\/div>";
-template += "                  <\/div>";
-template += "               <\/td>";
-template += "            <\/tr>";
-template += "         <\/tbody>";
-template += "      <\/table>";
-template += "   <\/div>";
-template += "<\/div>";
-
 
 function getEmailTrigger() {
 
 	// Disable the button
 	$(this).addClass("disabled").off().hide();
-
-	// Render the loading dialog
-	renderResults();
-
+	
 	// Grab the person's info and current company info (for the domain off the page)
 
-	$.when(LinkedIn.getPersonInfo(), LinkedIn.getCurrentCompanyInfo())
-		.always(function(user, company) {
-			console.debug("fetched user:", user, " and company:", company);
+	LinkedIn.getPersonInfo().always(function(user) {
+		console.debug("fetched user:", user);
 
-			if(user && user.emails.length > 0) {
-				renderResults(user.emails, false);
-				return;
-			}
+		var allEmails = [];
 
-			var workEmails = EmailStrategies.getWorkEmails(user, company),
-				personalEmails = EmailStrategies.getPersonalEmails(user);
-
-			console.debug("email guesses:", personalEmails, workEmails);
-			
-			$.when(findBestEmails(user, personalEmails, workEmails, Rapportive))
-				.always(function(work, personal) {
-					console.debug(work, personal);
-					renderResults(_.flatten(_.toArray(arguments)), false);
-				});
-		});
-
-
-
-	function findBestEmails(user, personalEmails, workEmails, Provider) {
-
-		function verifyEmails(emails, matches, defer) {
-			var defer = defer || $.Deferred();
-			var email = emails.shift();
-			var matches = matches || [];
-
-			if (email) { 
-				Provider.get(email, user)
-					.always(function(result) {
-						console.log(result);
-						if(result === null) {
-							console.error("result failed to return..");
-						} else if (result.score == 1) {
-							return defer.resolve([result].concat(matches));
-						} else if (result.score > 0) {
-							console.log('pushing ', result);
-							matches.push(result);
-						} else {
-							console.debug('[failed]', result);
-						}
-						verifyEmails(emails, matches, defer);
-					});
-			} else {
-				console.log('returning matches', matches);
-				defer.resolve(matches);
-			}
-
-			return defer.promise();
+		if (user && user.emails.length > 0) {
+			return renderResults(user.emails || [], false);
+		} else {
+			renderResults();
 		}
 
-		return $.when(verifyEmails(_.clone(workEmails)), verifyEmails(_.clone(personalEmails)));
+		getVerifiedEmails([LinkedIn.getPersonInfo()], EmailStrategies.getPersonalEmails).always(function(emails) {
+			renderResults(allEmails = allEmails.concat(emails), false);
+		});
+
+		getVerifiedEmails([LinkedIn.getPersonInfo(),LinkedIn.getCurrentCompanyInfo()], EmailStrategies.getWorkEmails).always(function(emails) {
+			renderResults(allEmails = allEmails.concat(emails), false);
+		});
+	});
+
+	function getVerifiedEmails(required, strategy) {
+		var defer = $.Deferred();
+		$.when.apply(this, required).always(function(user) {
+			var matches = strategy.apply(this, _.toArray(arguments));
+			verifyEmails(user, matches, Rapportive).then(function(emails) {
+				defer.resolve(emails);
+			})
+		});
+		return defer.promise();
 	}
+
+	function verifyEmails(user, emails, Provider, matches, defer) {
+		var defer = defer || $.Deferred(),
+			email = emails.shift(),
+			matches = matches || [];
+
+		email ?
+			Provider.get(email, user).always(resolveEmail) :
+			defer.resolve(matches);
+
+		function resolveEmail(result) {
+			console.log(result);
+			if (result === null) {
+				console.error("result failed to return..");
+			} else if (result.score == 1) {
+				return defer.resolve([result].concat(matches));
+			} else if (result.score > 0) {
+				matches.push(result);
+			} else {
+				console.debug('[failed]', result);
+			}
+			verifyEmails(user, emails, Provider, matches, defer);
+		}
+
+		return defer.promise();
+	}
+
 };
 
 function renderResults(emails, loading) {
-	$.get(chrome.extension.getURL('/templates/emails.html'), function(data) {
-		console.log(data);
-	    $(data).appendTo('body');
-	    // Or if you're using jQuery 1.8+:
-	    // $($.parseHTML(data)).appendTo('body');
-	});
-	var $result = $("#email-result"),
-		rendered = _.template(template, {
-			'emails': emails || [],
-			'loading': _.isUndefined(loading) ? true : loading
-		});
+	$.get(chrome.extension.getURL('templates/emails.htm')).always(function(data) {
+		var $result = $("#email-result"),
+			rendered = _.template(data, {
+				'emails': emails,
+				'loading': _.isUndefined(loading) ? true : loading
+			});
 
-	$result.length > 0 ?
-		$result.html(rendered) :
-		$(rendered).insertAfter(".profile-card");
+		$result.length > 0 ?
+			$result.html(rendered) :
+			$(rendered).insertAfter(".profile-card");
+	});
 }
 
 function insertEmailButton() {
@@ -635,5 +631,3 @@ function insertNameButton() {
 
 insertEmailButton();
 insertNameButton();
-
-
